@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ application.company.name }} - {{ application.job_title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Main Application Details -->
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <div>
+                        <h1 class="h3 mb-1">{{ application.company.name }}</h1>
+                        <h2 class="h5 text-muted">{{ application.job_title }}</h2>
+                    </div>
+                    <div>
+                        <a href="{{ url_for('main.edit_application', id=application.id) }}" class="btn btn-sm btn-outline-primary me-2">Edit</a>
+                        <a href="{{ url_for('main.delete_application', id=application.id) }}" class="btn btn-sm btn-outline-danger">Delete</a>
+                        {% if application.status != 'Accepted' and application.status != 'Archived' %}
+                        <button type="button" class="btn btn-sm btn-success ms-2 fw-bold" data-bs-toggle="modal" data-bs-target="#acceptOfferModal">
+                            Accept Offer
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <span class="badge bg-primary fs-6 me-2">{{ application.status }}</span>
+                    {% if application.priority == 'High' %}
+                        <span class="badge bg-danger fs-6">High Priority</span>
+                    {% endif %}
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-sm-6 mb-3">
+                        <div class="text-muted small fw-bold text-uppercase">Location</div>
+                        <div>{{ application.location or '-' }}</div>
+                    </div>
+                    <div class="col-sm-6 mb-3">
+                        <div class="text-muted small fw-bold text-uppercase">Salary Range</div>
+                        <div>{{ application.salary_range or '-' }}</div>
+                    </div>
+                    <div class="col-sm-6 mb-3">
+                        <div class="text-muted small fw-bold text-uppercase">Applied Date</div>
+                        <div>{{ application.applied_date.strftime('%B %d, %Y') if application.applied_date else '-' }}</div>
+                    </div>
+                    <div class="col-sm-6 mb-3">
+                        <div class="text-muted small fw-bold text-uppercase">Job URL</div>
+                        <div>
+                            {% if application.job_url %}
+                                <a href="{{ application.job_url }}" target="_blank" rel="noopener noreferrer">Link <i class="bi bi-box-arrow-up-right"></i></a>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                {% if application.notes %}
+                <div class="mb-3">
+                    <div class="text-muted small fw-bold text-uppercase mb-2">My Notes</div>
+                    <div class="bg-light p-3 rounded" style="white-space: pre-wrap;">{{ application.notes }}</div>
+                </div>
+                {% endif %}
+                
+                <div class="text-muted small mt-4 pt-3 border-top">
+                    Last updated: {{ application.updated_at.strftime('%Y-%m-%d %H:%M UTC') }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Company Info -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom-0 pt-4">
+                <h5 class="mb-0">Company Info</h5>
+            </div>
+            <div class="card-body pt-2">
+                {% if application.company.website %}
+                    <p class="mb-1"><strong>Website:</strong> <a href="{{ application.company.website }}" target="_blank">{{ application.company.website }}</a></p>
+                {% endif %}
+                {% if application.company.industry %}
+                    <p class="mb-1"><strong>Industry:</strong> {{ application.company.industry }}</p>
+                {% endif %}
+                {% if application.company.notes %}
+                    <p class="mt-2 text-muted small">{{ application.company.notes }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar: Timeline & Interactions -->
+    <div class="col-md-4">
+        
+        <!-- Add Interaction Form -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-light border-bottom-0 py-3">
+                <h6 class="mb-0 fw-bold">Log Interaction</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('main.add_interaction', id=application.id) }}">
+                    {{ interaction_form.hidden_tag() }}
+                    <div class="row mb-2">
+                        <div class="col-6">
+                            {{ interaction_form.type(class="form-select form-select-sm") }}
+                        </div>
+                        <div class="col-6">
+                            {{ interaction_form.date(class="form-control form-control-sm", type="date", value=None) }}
+                        </div>
+                    </div>
+                    <div class="mb-2">
+                        {{ interaction_form.notes(class="form-control form-control-sm", rows="2", placeholder="Notes...") }}
+                    </div>
+                    <div class="text-end">
+                        {{ interaction_form.submit(class="btn btn-sm btn-primary") }}
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- History Timeline -->
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white border-bottom-0 pt-4">
+                <h5 class="mb-0">Timeline</h5>
+            </div>
+            <div class="card-body">
+                <div class="timeline position-relative ps-3 border-start border-2 border-primary">
+                    
+                    <!-- Interactions -->
+                    {% for interaction in application.interactions|sort(attribute='date', reverse=True) %}
+                    <div class="timeline-item mb-4 position-relative">
+                        <div class="position-absolute bg-primary rounded-circle" style="width: 10px; height: 10px; left: -22px; top: 6px;"></div>
+                        <div class="small text-muted mb-1">{{ interaction.date.strftime('%b %d, %Y') }}</div>
+                        <div class="fw-bold">{{ interaction.type }}</div>
+                        {% if interaction.notes %}
+                            <div class="small bg-light p-2 mt-1 rounded">{{ interaction.notes }}</div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+
+                    <!-- Status History -->
+                    {% for history in application.status_history|sort(attribute='changed_at', reverse=True) %}
+                    <div class="timeline-item mb-4 position-relative text-muted">
+                        <div class="position-absolute bg-secondary rounded-circle" style="width: 8px; height: 8px; left: -21px; top: 6px;"></div>
+                        <div class="small mb-1">{{ history.changed_at.strftime('%b %d, %Y') }}</div>
+                        <div class="small">Status changed: <span class="text-decoration-line-through">{{ history.old_status }}</span> → <strong>{{ history.new_status }}</strong></div>
+                    </div>
+                    {% endfor %}
+
+                    <!-- Creation -->
+                    <div class="timeline-item position-relative text-muted">
+                        <div class="position-absolute bg-secondary rounded-circle" style="width: 8px; height: 8px; left: -21px; top: 6px;"></div>
+                        <div class="small mb-1">{{ application.created_at.strftime('%b %d, %Y') }}</div>
+                        <div class="small">Application created</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+{% if application.status != 'Accepted' and application.status != 'Archived' %}
+<div class="modal fade" id="acceptOfferModal" tabindex="-1" aria-labelledby="acceptOfferModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border-success">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title" id="acceptOfferModalLabel">Accept Offer from {{ application.company.name }}?</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p class="lead">Congratulations on the offer! 🎉</p>
+        <p><strong>This will archive all your other active applications.</strong></p>
+        <p class="text-muted small mb-0">Don't worry, you can undo this at any time from the dashboard or the archived view. No data will be permanently deleted.</p>
+      </div>
+      <div class="modal-footer">
+        <form method="POST" action="{{ url_for('main.accept_offer', id=application.id) }}">
+            <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-success fw-bold">Accept Offer</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

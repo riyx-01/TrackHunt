@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}Delete Application?{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6">
+        <div class="card shadow border-danger">
+            <div class="card-header bg-danger text-white">
+                <h4 class="mb-0">Confirm Deletion</h4>
+            </div>
+            <div class="card-body text-center p-5">
+                <h5 class="mb-4">Are you sure you want to delete this application?</h5>
+                <p class="lead">
+                    <strong>{{ application.job_title }}</strong> at <strong>{{ application.company.name }}</strong>
+                </p>
+                <p class="text-muted small mb-4">
+                    This action cannot be undone. All related interactions and history will be permanently deleted.
+                </p>
+                
+                <form method="POST">
+                    <!-- We still need a CSRF token conceptually, but since it's just a POST endpoint 
+                         without a formal WTForm class for deletion, we can just submit the post.
+                         In a stricter app, you'd generate a token here. -->
+                    <a href="{{ url_for('main.application_detail', id=application.id) }}" class="btn btn-light px-4 me-2">Cancel</a>
+                    <button type="submit" class="btn btn-danger px-4">Yes, Delete It</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

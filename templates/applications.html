@@ -1,0 +1,111 @@
+{% extends 'base.html' %}
+
+{% block title %}All Applications - Job Application Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h2 mb-0">Applications</h1>
+    <a href="{{ url_for('main.new_application') }}" class="btn btn-primary">+ New</a>
+</div>
+
+<!-- Filters & Search -->
+<div class="card shadow-sm border-0 mb-4 bg-white">
+    <div class="card-body py-3">
+        <form method="GET" action="{{ url_for('main.application_list') }}" class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="q" class="form-label text-muted small mb-1">Search Company or Title</label>
+                <input type="text" class="form-control" id="q" name="q" value="{{ request.args.get('q', '') }}" placeholder="e.g. Google, Python Developer...">
+            </div>
+            <div class="col-md-3">
+                <label for="status" class="form-label text-muted small mb-1">Filter by Status</label>
+                <select class="form-select" id="status" name="status">
+                    <option value="">All Statuses</option>
+                    {% for s in ['Saved', 'Applied', 'Screening', 'Interview', 'Offer', 'Rejected', 'Accepted', 'Archived'] %}
+                        <option value="{{ s }}" {% if request.args.get('status') == s %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-secondary w-100">Filter</button>
+            </div>
+            {% if request.args.get('q') or request.args.get('status') %}
+            <div class="col-md-2">
+                <a href="{{ url_for('main.application_list') }}" class="btn btn-outline-secondary w-100">Clear</a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+</div>
+
+{% if request.args.get('status') == 'Archived' and accepted_offer %}
+<div class="alert alert-secondary d-flex justify-content-between align-items-center mb-4 border-0 shadow-sm">
+    <div>
+        <i class="bi bi-info-circle me-2"></i>
+        These applications were archived because you accepted an offer at <strong>{{ accepted_offer.company.name }}</strong>.
+    </div>
+    <form method="POST" action="{{ url_for('main.rollback_offer', event_id=accepted_offer.id) }}" class="m-0">
+        <button type="submit" class="btn btn-sm btn-outline-secondary fw-bold bg-white">Restore All</button>
+    </form>
+</div>
+{% endif %}
+
+<!-- Sortable Table -->
+<div class="card shadow-sm border-0">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Company</th>
+                    <th>Job Title</th>
+                    <th>Status</th>
+                    <th>Applied On</th>
+                    <th>Priority</th>
+                    <th class="text-end">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for app in applications %}
+                <tr class="{% if app.status == 'Archived' %}table-secondary text-muted{% endif %}">
+                    <td class="fw-bold">{{ app.company.name }}</td>
+                    <td>{{ app.job_title }}</td>
+                    <td>
+                        <!-- Dynamic Badge Colors based on status -->
+                        {% set badge_class = 'bg-secondary' %}
+                        {% if app.status == 'Applied' %}{% set badge_class = 'bg-info text-dark' %}{% endif %}
+                        {% if app.status == 'Screening' %}{% set badge_class = 'bg-primary' %}{% endif %}
+                        {% if app.status == 'Interview' %}{% set badge_class = 'bg-warning text-dark' %}{% endif %}
+                        {% if app.status == 'Offer' %}{% set badge_class = 'bg-success' %}{% endif %}
+                        {% if app.status == 'Rejected' %}{% set badge_class = 'bg-danger' %}{% endif %}
+                        {% if app.status == 'Accepted' %}{% set badge_class = 'bg-success border border-dark' %}{% endif %}
+                        {% if app.status == 'Archived' %}{% set badge_class = 'bg-secondary text-dark border border-secondary' %}{% endif %}
+                        
+                        <span class="badge {{ badge_class }}">{{ app.status }}</span>
+                    </td>
+                    <td>
+                        {{ app.applied_date.strftime('%b %d, %Y') if app.applied_date else '<span class="text-muted">-</span>'|safe }}
+                    </td>
+                    <td>
+                        {% if app.priority == 'High' %}
+                            <span class="text-danger fw-bold">↑ High</span>
+                        {% elif app.priority == 'Medium' %}
+                            <span class="text-warning text-dark">− Med</span>
+                        {% else %}
+                            <span class="text-muted">↓ Low</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end">
+                        <a href="{{ url_for('main.application_detail', id=app.id) }}" class="btn btn-sm btn-outline-primary">View</a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center py-4 text-muted">
+                        No applications found matching your criteria.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

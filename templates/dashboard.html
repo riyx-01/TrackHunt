@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Job Application Tracker{% endblock %}
+
+{% block content %}
+{% if accepted_offer and not accepted_offer.is_accepted_banner_dismissed %}
+<div class="alert alert-success shadow-sm mb-4 position-relative overflow-hidden" role="alert">
+    <div class="position-absolute top-0 start-0 w-100 h-100" style="background: linear-gradient(45deg, rgba(255,255,255,0.15) 25%, transparent 25%, transparent 50%, rgba(255,255,255,0.15) 50%, rgba(255,255,255,0.15) 75%, transparent 75%, transparent); background-size: 1rem 1rem; opacity: 0.5;"></div>
+    <div class="position-relative z-index-1 d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+        <div>
+            <h4 class="alert-heading mb-1">🎉 You got the job!</h4>
+            <p class="mb-0">You accepted an offer at <strong>{{ accepted_offer.company.name }}</strong>! Other active applications have been archived.</p>
+        </div>
+        <div class="d-flex align-items-center mt-3 mt-md-0">
+            <form method="POST" action="{{ url_for('main.rollback_offer', event_id=accepted_offer.id) }}" class="me-2">
+                <button type="submit" class="btn btn-sm btn-outline-success fw-bold bg-white">Undo</button>
+            </form>
+            <form method="POST" action="{{ url_for('main.dismiss_banner', id=accepted_offer.id) }}">
+                <button type="submit" class="btn btn-sm btn-link text-success text-decoration-none">Dismiss</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="h2">Dashboard</h1>
+    </div>
+</div>
+
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 text-center py-3">
+            <h5 class="text-muted mb-1">Total Apps</h5>
+            <h2 class="text-primary mb-0">{{ stats.total_apps }}</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 text-center py-3">
+            <h5 class="text-muted mb-1">Interviews this Month</h5>
+            <h2 class="text-success mb-0">{{ stats.interviews_this_month }}</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 text-center py-3">
+            <h5 class="text-muted mb-1">Response Rate</h5>
+            <h2 class="text-info mb-0">{{ stats.response_rate }}%</h2>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card shadow-sm border-0 text-center py-3">
+            <h5 class="text-muted mb-1">Avg Time to Response</h5>
+            <h2 class="text-warning mb-0">{{ stats.avg_days_to_response }}</h2>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <!-- Chart Section -->
+    <div class="col-md-8">
+        <div class="card shadow-sm border-0 h-100">
+            <div class="card-header bg-white border-bottom-0 pt-4">
+                <h5 class="card-title">Applications Over Time (Last 12 Weeks)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="applicationsChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Needs Attention Section -->
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 border-top border-danger border-4 h-100">
+            <div class="card-header bg-white border-bottom-0 pt-4">
+                <h5 class="card-title text-danger">Needs Attention</h5>
+            </div>
+            <div class="card-body">
+                {% if needs_attention %}
+                    <ul class="list-group list-group-flush">
+                    {% for app in needs_attention %}
+                        <li class="list-group-item px-0">
+                            <a href="{{ url_for('main.application_detail', id=app.id) }}" class="text-decoration-none fw-bold">
+                                {{ app.company.name }}
+                            </a>
+                            <br>
+                            <small class="text-muted">{{ app.job_title }}</small>
+                            <br>
+                            <span class="badge bg-warning text-dark mt-1">Status: {{ app.status }}</span>
+                            {% if app.follow_up_date %}
+                                <span class="badge bg-danger mt-1">Follow up: {{ app.follow_up_date.strftime('%b %d') }}</span>
+                            {% endif %}
+                        </li>
+                    {% endfor %}
+                    </ul>
+                {% else %}
+                    <p class="text-muted text-center mt-4">All caught up! Nothing needs immediate attention.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12 text-end">
+        <a href="{{ url_for('main.export_csv') }}" class="btn btn-outline-secondary btn-sm">
+            Download CSV Export
+        </a>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('applicationsChart').getContext('2d');
+    
+    // Data passed from Flask
+    const chartLabels = {{ chart_data.labels | tojson }};
+    const chartData = {{ chart_data.data | tojson }};
+    
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: chartLabels,
+            datasets: [{
+                label: 'Applications Submitted',
+                data: chartData,
+                backgroundColor: 'rgba(13, 110, 253, 0.5)', // Bootstrap primary color
+                borderColor: 'rgba(13, 110, 253, 1)',
+                borderWidth: 1,
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
