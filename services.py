@@ -103,12 +103,13 @@ def get_needs_attention():
     1. follow_up_date is today or in the past
     2. OR updated_at is more than 7 days ago AND status is not Rejected/Accepted
     """
-    today = date.today()
-    seven_days_ago = datetime.now(timezone.utc) - timedelta(days=7)
+    # Remind the user 4 days prior to a follow-up date, or if inactive for 4 days
+    four_days_from_now = date.today() + timedelta(days=4)
+    four_days_ago = datetime.now(timezone.utc) - timedelta(days=4)
     
     # We use OR (|) operator in SQLAlchemy
     attention_apps = Application.query.filter(
-        ((Application.follow_up_date <= today) | (Application.updated_at < seven_days_ago)) & 
+        ((Application.follow_up_date <= four_days_from_now) | (Application.updated_at < four_days_ago)) & 
         (~Application.status.in_(['Rejected', 'Accepted', 'Archived']))
     ).all()
     

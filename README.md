@@ -8,7 +8,7 @@ A complete, production-quality web application to track job applications through
 - **Application Management**: Create, Read, Update, and Delete applications. Add companies on the fly.
 - **Offer Management**: Accept a job offer to automatically archive all other active applications. Includes a complete 1-click atomic undo system powered by database snapshots.
 - **Interaction Logging**: Keep a timeline of all touchpoints (emails, calls, interviews) for each application.
-- **Reminders**: Automatically highlights applications that need follow-up or haven't been updated in 7 days.
+- **Reminders**: Automatically highlights applications that need follow-up in the next 4 days, or haven't been updated in 4 days.
 - **Search & Filter**: Find applications by company, job title, or current status.
 - **CSV Export**: Download all your application data for external analysis.
 - **Velocity Tracking**: Automatically logs when an application changes status (e.g., from Applied to Interview).
