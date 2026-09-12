@@ -54,6 +54,7 @@ class Application(db.Model):
     # Relationships
     interactions = db.relationship('Interaction', backref='application', lazy=True, cascade="all, delete-orphan")
     status_history = db.relationship('StatusHistory', backref='application', lazy=True, cascade="all, delete-orphan")
+    archive_snapshots = db.relationship('ArchiveSnapshot', backref='application', lazy=True, cascade="all, delete-orphan")
 
 class Interaction(db.Model):
     """

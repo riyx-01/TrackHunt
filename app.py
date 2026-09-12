@@ -28,8 +28,35 @@ def create_app():
         
     # Ensure database tables are created before the first request
     with app.app_context():
+        # Create database tables if they don't exist
         db.create_all()
         
+        # Automatically seed default companies if they don't exist
+        # This is especially helpful for new Vercel PostgreSQL deployments
+        from models import Company
+        default_companies = [
+            {"name": "Google", "industry": "Technology"},
+            {"name": "Microsoft", "industry": "Technology"},
+            {"name": "Apple", "industry": "Technology"},
+            {"name": "Meta", "industry": "Technology"},
+            {"name": "Amazon", "industry": "Technology"},
+            {"name": "Netflix", "industry": "Entertainment"},
+            {"name": "Spotify", "industry": "Audio Streaming"},
+            {"name": "Airbnb", "industry": "Travel Tech"},
+            {"name": "Stripe", "industry": "FinTech"},
+            {"name": "Vercel", "industry": "Web Development"},
+            {"name": "OpenAI", "industry": "AI Research"}
+        ]
+        
+        added_any = False
+        for c_data in default_companies:
+            if not Company.query.filter_by(name=c_data["name"]).first():
+                db.session.add(Company(**c_data))
+                added_any = True
+                
+        if added_any:
+            db.session.commit()
+            
     return app
 
 # Vercel's serverless environment requires a globally scoped 'app' variable.

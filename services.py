@@ -108,8 +108,8 @@ def get_needs_attention():
     
     # We use OR (|) operator in SQLAlchemy
     attention_apps = Application.query.filter(
-        (Application.follow_up_date <= today) |
-        ((Application.updated_at < seven_days_ago) & (~Application.status.in_(['Rejected', 'Accepted', 'Archived'])))
+        ((Application.follow_up_date <= today) | (Application.updated_at < seven_days_ago)) & 
+        (~Application.status.in_(['Rejected', 'Accepted', 'Archived']))
     ).all()
     
     return attention_apps
