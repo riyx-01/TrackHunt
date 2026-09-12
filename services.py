@@ -15,22 +15,32 @@ def get_dashboard_stats():
     current_month = datetime.now().month
     current_year = datetime.now().year
     
-    # We query interactions where type is Interview and date is in the current month/year
-    # extract('month', date) works in most databases including SQLite and PostgreSQL
-    interviews_this_month = Interaction.query.filter(
-        Interaction.type == 'Interview',
-        db.extract('month', Interaction.date) == current_month,
-        db.extract('year', Interaction.date) == current_year
-    ).count()
+    # Safely query across databases and catch users who use Interactions OR Status updates
+    interview_app_ids = set()
+    
+    interactions = Interaction.query.filter_by(type='Interview').all()
+    for interaction in interactions:
+        if interaction.date and interaction.date.month == current_month and interaction.date.year == current_year:
+            if interaction.application_id:
+                interview_app_ids.add(interaction.application_id)
+                
+    hists = StatusHistory.query.filter_by(new_status='Interview').all()
+    for hist in hists:
+        if hist.changed_at and hist.changed_at.month == current_month and hist.changed_at.year == current_year:
+            if hist.application_id:
+                interview_app_ids.add(hist.application_id)
+                
+    interviews_this_month = len(interview_app_ids)
     
     # Response rate: Apps that moved past 'Applied' or 'Saved'
+    # We include Archived apps because response rate is a historical metric.
     responded_apps = Application.query.filter(
-        Application.status.notin_(['Saved', 'Applied', 'Archived'])
+        Application.status.notin_(['Saved', 'Applied'])
     ).count()
     
     # Avoid division by zero
     total_applied_or_more = Application.query.filter(
-        Application.status.notin_(['Saved', 'Archived'])
+        Application.status != 'Saved'
     ).count()
     
     response_rate = 0
@@ -48,28 +58,41 @@ def get_dashboard_stats():
 
 def calculate_avg_days_to_response():
     """Helper function to calculate average days from Applied to Screening/Interview"""
-    # Find all status history records where status changed FROM Applied TO Screening/Interview
-    # This requires a more complex query, so for now we'll do it in memory for the sake of simplicity.
-    # In a real large-scale app, you'd do this in SQL.
-    
-    applications = Application.query.all()
+    # Include all applications (even archived ones) since this is a historical metric
+    applications = Application.query.filter(Application.status != 'Saved').all()
     total_days = 0
     count = 0
     
     for app in applications:
-        if app.status in ['Saved', 'Applied']:
+        # Find the earliest history record indicating a response
+        response_hist = [h for h in app.status_history if h.new_status in ['Screening', 'Interview', 'Offer', 'Rejected', 'Accepted']]
+        
+        if not response_hist:
+            # If the application is currently in a responded state but has no history 
+            # (e.g. seeded data or created directly with that state)
+            if app.status in ['Screening', 'Interview', 'Offer', 'Rejected', 'Accepted']:
+                diff = (app.updated_at.date() - (app.applied_date or app.created_at.date())).days
+                if diff >= 0:
+                    total_days += diff
+                    count += 1
             continue
             
-        applied_hist = next((h for h in app.status_history if h.new_status == 'Applied'), None)
-        responded_hist = next((h for h in app.status_history if h.new_status in ['Screening', 'Interview', 'Rejected']), None)
+        first_response_date = min([h.changed_at.date() for h in response_hist])
         
-        # If we have both, calculate the difference
-        if applied_hist and responded_hist:
-            diff = (responded_hist.changed_at - applied_hist.changed_at).days
-            if diff >= 0:
-                total_days += diff
-                count += 1
+        # Determine the start date (applied date)
+        start_date = app.applied_date
+        if not start_date:
+            applied_hist = next((h for h in app.status_history if h.new_status == 'Applied'), None)
+            if applied_hist:
+                start_date = applied_hist.changed_at.date()
+            else:
+                start_date = app.created_at.date()
                 
+        diff = (first_response_date - start_date).days
+        if diff >= 0:
+            total_days += diff
+            count += 1
+            
     if count == 0:
         return "N/A"
     return f"{round(total_days / count)} days"
