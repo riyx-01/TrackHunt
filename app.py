@@ -32,7 +32,10 @@ def create_app():
         
     return app
 
+# Vercel's serverless environment requires a globally scoped 'app' variable.
+# We call our factory function here so the WSGI server can find it.
+app = create_app()
+
 if __name__ == '__main__':
-    # Run the application
-    app = create_app()
+    # Run the application locally
     app.run(debug=True)
